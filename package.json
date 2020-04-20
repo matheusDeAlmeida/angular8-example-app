@@ -24,7 +24,6 @@
     "bundle-report": "ng build --configuration=production-en --stats-json && webpack-bundle-analyzer dist/browser/stats.json",
     "release:minor": "standard-version --release-as minor && git push --follow-tags origin master",
     "release:major": "standard-version --release-as major && git push --follow-tags origin master",
-    "ci": "npm run lint && npm run test && npm run e2e && npm run build:ssr && npm run validate:server",
     "prepare:deploy": "bash scripts/prepare-deploy.sh",
     "deploy": "npm run build:ssr && npm run prepare:deploy && firebase deploy"
   },
@@ -98,7 +97,6 @@
     "hammerjs": "2.0.8",
     "html2canvas": "1.0.0-rc.3",
     "http-server": "0.11.1",
-    "husky": "2.4.1",
     "jasmine-core": "3.4.0",
     "jasmine-spec-reporter": "4.2.1",
     "karma": "4.1.0",
