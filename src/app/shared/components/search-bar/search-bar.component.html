@@ -1,6 +1,6 @@
 <mat-form-field id="search-input">
   <input matInput placeholder="Look for a hero!" i18n-placeholder="@@findHero"
-         [matAutocomplete]="heroesAutocomplete" [formControl]="heroFormControl">
+         [matAutocomplete]="heroesAutocomplete" [formControl]="heroFormControl" data-cy="lookForAheroInput">
 </mat-form-field>
 
 <mat-autocomplete #heroesAutocomplete="matAutocomplete">
