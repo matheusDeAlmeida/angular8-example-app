@@ -17,4 +17,3 @@ export const heroes: Hero[] = [
         realName: 'Tony Stark',
     }
   ];
-  
