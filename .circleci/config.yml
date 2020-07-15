@@ -1,0 +1,356 @@
+version: 2
+
+references:
+  filter_exclude_releases: &filter_exclude_releases
+    filters:
+      branches:
+        ignore:
+          - /hml-.*/
+          - /hom-.*/
+          - pre
+          - master
+
+  filter_only_dev: &filter_only_dev
+    filters:
+      branches:
+        only:
+          - /dev-.*/
+
+  filter_only_qa: &filter_only_qa
+    filters:
+      branches:
+        only:
+          - /qa-.*/
+
+  filter_only_hml: &filter_only_hml
+    filters:
+      branches:
+        only:
+          - /hml-.*/
+
+  filter_only_hom: &filter_only_hom
+    filters:
+      branches:
+        only:
+          - /hom-.*/
+
+  filter_only_pre: &filter_only_pre
+    filters:
+      branches:
+        only:
+          - pre
+
+  filter_only_master: &filter_only_master
+    filters:
+      branches:
+        only:
+          - master
+
+  pull_submodules: &pull_submodules
+    run:
+      name: "Pull Submodules"
+      command: "git submodule update --init"
+
+  default_node_container_config: &default_node_container_config
+    docker:
+      - image: "circleci/node:10.14.1"
+    working_directory: "~/project"
+
+  default_python_container_config: &default_python_container_config
+    docker:
+      - image: "circleci/python:2.7-jessie"
+    working_directory: "~/project"
+
+  default_attach_workspace: &default_attach_workspace
+    attach_workspace:
+      at: .
+
+  install_aws_cli: &install_aws_cli
+    run:
+      name: Install awscli
+      command: sudo pip install awscli
+
+  npm_install: &npm_install
+    run:
+      name: "Install dependencies from NPM"
+      command: "npm install"
+
+jobs:
+  lint:
+    <<: *default_node_container_config
+    steps:
+      - checkout
+      - *pull_submodules
+      # - *install_angular
+      - *npm_install
+      - run:
+          name: "Run lint"
+          command: "npm run lint"
+
+  e2e:
+    docker:
+      - image:  "circleci/node:10.14.1-browsers"
+    steps:
+      - checkout
+      - *pull_submodules
+      # - *install_angular
+      - *npm_install
+      - run:
+          name: "Run end-to-end tests"
+          command: |
+            wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            sudo apt install ./google-chrome-stable_current_amd64.deb
+            npm run e2e
+  build-dev:
+    <<: *default_node_container_config
+    steps:
+      - checkout
+      - *pull_submodules
+      # - *install_angular
+      - *npm_install
+      - run:
+          name: "Build project"
+          command: "npm run build -- --configuration=dev"
+      - persist_to_workspace:
+          root: .
+          paths:
+            - dist
+  build-hml:
+    <<: *default_node_container_config
+    steps:
+      - checkout
+      - *pull_submodules
+      # - *install_angular
+      - *npm_install
+      - run:
+          name: "Build project"
+          command: "npm run build -- --configuration=hml"
+      - persist_to_workspace:
+          root: .
+          paths:
+            - dist
+
+  build-hom:
+    <<: *default_node_container_config
+    steps:
+      - checkout
+      - *pull_submodules
+      # - *install_angular
+      - *npm_install
+      - run:
+          name: "Build project"
+          command: "npm run build -- --configuration=hom"
+      - persist_to_workspace:
+          root: .
+          paths:
+            - dist
+
+  build-pre:
+    <<: *default_node_container_config
+    steps:
+      - checkout
+      - *pull_submodules
+      # - *install_angular
+      - *npm_install
+      - run:
+          name: "Build project"
+          command: "npm run build -- --configuration=pre"
+      - persist_to_workspace:
+          root: .
+          paths:
+            - dist
+
+  build-prod:
+    <<: *default_node_container_config
+    steps:
+      - checkout
+      - *pull_submodules
+      # - *install_angular
+      - *npm_install
+      - run:
+          name: "Build project"
+          command: "npm run build -- --configuration=production"
+      - persist_to_workspace:
+          root: .
+          paths:
+            - dist
+
+  deploy-dev:
+    <<: *default_python_container_config
+    steps:
+      - *default_attach_workspace
+      - *install_aws_cli
+      - run:
+          name: Configure credentials for DEV environment
+          command: |
+            echo "export AWS_ACCESS_KEY_ID=$DEV_AWS_ACCESS_KEY_ID" >> $BASH_ENV
+            echo "export AWS_SECRET_ACCESS_KEY=$DEV_AWS_SECRET_ACCESS_KEY" >> $BASH_ENV
+            source $BASH_ENV
+      - run:
+          name: Remove everything that is in the bucket
+          command: aws s3 rm s3://dev-portalpf.segurosunimed.tokenlab.world --recursive
+      - run:
+          name: Put new deployment in bucket
+          command: aws s3 cp dist/seguros-unimed-portais s3://dev-portalpf.segurosunimed.tokenlab.world/ --recursive
+      - run:
+          name: Invalidate Cloudfront distribution
+          command: aws cloudfront create-invalidation --distribution-id ETMWLHU7QCFDQ --paths "/*"
+
+  deploy-hml:
+    <<: *default_python_container_config
+    steps:
+      - *default_attach_workspace
+      - *install_aws_cli
+      - run:
+          name: Configure credentials for HML environment
+          command: |
+            echo "export AWS_ACCESS_KEY_ID=$HML_AWS_ACCESS_KEY_ID" >> $BASH_ENV
+            echo "export AWS_SECRET_ACCESS_KEY=$HML_AWS_SECRET_ACCESS_KEY" >> $BASH_ENV
+            source $BASH_ENV
+      - run:
+          name: Remove everything that is in the bucket
+          command: aws s3 rm s3://beneficiario.hml.segurosunimed.tokenlab.world --recursive
+      - run:
+          name: Put new deployment in bucket
+          command: aws s3 cp dist/seguros-unimed-portais s3://beneficiario.hml.segurosunimed.tokenlab.world/ --recursive
+      - run:
+          name: Invalidate Cloudfront distribution
+          command: aws cloudfront create-invalidation --distribution-id E2OR5CFRNI0OIA --paths "/*"
+
+  deploy-hom:
+    <<: *default_python_container_config
+    steps:
+      - *default_attach_workspace
+      - *install_aws_cli
+      - run:
+          name: Configure credentials for HOM environment
+          command: |
+            echo "export AWS_ACCESS_KEY_ID=$HOM_AWS_ACCESS_KEY_ID" >> $BASH_ENV
+            echo "export AWS_SECRET_ACCESS_KEY=$HOM_AWS_SECRET_ACCESS_KEY" >> $BASH_ENV
+            source $BASH_ENV
+      - run:
+          name: Remove everything that is in the bucket
+          command: aws s3 rm s3://homologacao-portalpf.segurosunimed.com.br --recursive
+      - run:
+          name: Put new deployment in bucket
+          command: aws s3 cp dist/seguros-unimed-portais s3://homologacao-portalpf.segurosunimed.com.br/ --recursive
+      - run:
+          name: Invalidate Cloudfront distribution
+          command: aws cloudfront create-invalidation --distribution-id E2OHPTJTQE09AP --paths "/*"
+
+  deploy-pre:
+    <<: *default_python_container_config
+    steps:
+      - *default_attach_workspace
+      - *install_aws_cli
+      - run:
+          name: Configure credentials for PRE environment
+          command: |
+            echo "export AWS_ACCESS_KEY_ID=$PRE_AWS_ACCESS_KEY_ID" >> $BASH_ENV
+            echo "export AWS_SECRET_ACCESS_KEY=$PRE_AWS_SECRET_ACCESS_KEY" >> $BASH_ENV
+            source $BASH_ENV
+      - run:
+          name: Remove everything that is in the bucket
+          command: aws s3 rm s3://preproducao-portalpf.segurosunimed.com.br --recursive
+      - run:
+          name: Put new deployment in bucket
+          command: aws s3 cp dist/seguros-unimed-portais s3://preproducao-portalpf.segurosunimed.com.br/ --recursive
+      - run:
+          name: Invalidate Cloudfront distribution
+          command: aws cloudfront create-invalidation --distribution-id EEZQA6TPLJM50 --paths "/*"
+
+  deploy-prod:
+    <<: *default_python_container_config
+    steps:
+      - *default_attach_workspace
+      - *install_aws_cli
+      - run:
+          name: Configure credentials for PROD environment
+          command: |
+            echo "export AWS_ACCESS_KEY_ID=$PROD_AWS_ACCESS_KEY_ID" >> $BASH_ENV
+            echo "export AWS_SECRET_ACCESS_KEY=$PROD_AWS_SECRET_ACCESS_KEY" >> $BASH_ENV
+            source $BASH_ENV
+      - run:
+          name: Remove everything that is in the bucket
+          command: aws s3 rm s3://producao-portalpf.segurosunimed.com.br --recursive
+      - run:
+          name: Put new deployment in bucket
+          command: aws s3 cp dist/seguros-unimed-portais s3://producao-portalpf.segurosunimed.com.br/ --recursive
+      - run:
+          name: Invalidate Cloudfront distribution
+          command: aws cloudfront create-invalidation --distribution-id E1KWGF40SH51C1 --paths "/*"
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - lint
+
+      - build-dev:
+          <<: *filter_exclude_releases
+          requires:
+            - lint
+      - approve-deploy-dev:
+          <<: *filter_only_qa
+          type: approval
+          requires:
+            - build-dev
+      - deploy-dev:
+          <<: *filter_only_qa
+          requires:
+            - approve-deploy-dev
+
+#      - backstop:
+#          <<: *filter_only_qa
+#          requires:
+#            - build-dev
+      - e2e:
+          <<: *filter_only_qa
+          requires:
+            - build-dev
+
+      - build-hml:
+          <<: *filter_only_hml
+          requires:
+            - lint
+      - approve-deploy-hml:
+          <<: *filter_only_hml
+          type: approval
+          requires:
+            - build-hml
+      - deploy-hml:
+          <<: *filter_only_hml
+          requires:
+            - approve-deploy-hml
+
+      - build-hom:
+          <<: *filter_only_hom
+          requires:
+            - lint
+      - approve-deploy-hom:
+          <<: *filter_only_hom
+          type: approval
+          requires:
+            - build-hom
+      - deploy-hom:
+          <<: *filter_only_hom
+          requires:
+            - approve-deploy-hom
+
+      - build-pre:
+          <<: *filter_only_pre
+          requires:
+            - lint
+      - deploy-pre:
+          <<: *filter_only_pre
+          requires:
+            - build-pre
+
+      - build-prod:
+          <<: *filter_only_master
+          requires:
+            - lint
+      - deploy-prod:
+          <<: *filter_only_master
+          requires:
+            - build-prod

@@ -5,12 +5,12 @@ export class HeroesList extends Base {
     super();
   }
 
-  /**
-  * Enters a hero name, a real hero name and creates a new hero
-  *
-  * @param {string} name Hero's name
-  * @param {string} realName Hero's real name
-  */
+   /**
+    * Enters a hero name, a real hero name and creates a new hero
+    *
+    * @param name Hero's name
+    * @param realName Hero's real name
+    */
   createHero(name: string, realname: string) {
     const nameInput = cy.get('[data-cy=heroeNameInput]');
     const heroRealName = cy.get('[data-cy=heroRealNameInput]');
@@ -23,7 +23,7 @@ export class HeroesList extends Base {
   }
 
   deleteHero(name: string, realname: string) {
-    
+
   }
 
 }
